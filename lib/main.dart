@@ -172,9 +172,8 @@ class _WordleWidgetState extends State<WordleWidget> {
           final String? character = event.character;
           String userInput = _controllers[_currentEditingRowIndex].map((controller) => controller.text).join('').toLowerCase();
 
-          if (event.logicalKey == LogicalKeyboardKey.enter && userInput.length == 5) { 
-
-            if(!words.contains(userInput)) {
+          if (event.logicalKey == LogicalKeyboardKey.enter) { 
+            if(userInput.length != 5){
               if (!_isDialogShowing) {
                 _isDialogShowing = true;
                 showDialog(
@@ -182,7 +181,7 @@ class _WordleWidgetState extends State<WordleWidget> {
                   context: context,
                   builder: (BuildContext context) {
                     return AlertDialog(
-                      title: Text("없는 단어"),
+                      title: Text("너무 짧음"),
                       actions: <Widget>[
                         TextButton(
                           child: Text("확인"),
@@ -201,7 +200,36 @@ class _WordleWidgetState extends State<WordleWidget> {
                 _isDialogShowing = false;
                 _resetColumn();
               }
-            }else _checkWord();
+            }else {
+              if(!words.contains(userInput)) {
+                if (!_isDialogShowing) {
+                  _isDialogShowing = true;
+                  showDialog(
+                    barrierDismissible: false,
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text("없는 단어"),
+                        actions: <Widget>[
+                          TextButton(
+                            child: Text("확인"),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _isDialogShowing = false;
+                              _resetColumn();
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }else{
+                  Navigator.of(context).pop();
+                  _isDialogShowing = false;
+                  _resetColumn();
+                }
+              }else _checkWord();
+            }
           } else if (event.logicalKey == LogicalKeyboardKey.backspace && _currentEditingColumnIndex > 0) {
             setState(() {
               _currentEditingColumnIndex--;
