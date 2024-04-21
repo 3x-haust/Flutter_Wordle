@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:math';
 
 void main() {
   runApp(MyApp());
@@ -25,13 +26,26 @@ class WordleWidget extends StatefulWidget {
 }
 
 class _WordleWidgetState extends State<WordleWidget> {
-  final String answer = "apple"; // 정답 단어
+  String answer = ""; // 정답 단어 // TODO 랜덤 만들기
+  List<String> words = []; // 실제 단어
   List<List<TextEditingController>> _controllers = [];
   List<List<FocusNode>> _focusNodes = [];
   List<List<Color>> _backgroundColor = []; // 배경색 리스트
   int _currentEditingRowIndex = 0; // 현재 편집 중인 행 인덱스
   int _currentEditingColumnIndex = 0; // 현재 편집 중인 열 인덱스
   bool _isDialogShowing = false; // 다이얼로그 표시 여부
+
+  Future<List<String>> loadWords() async {
+    final String data = await rootBundle.loadString('assets/words.txt');  // 경로 수정
+    words = data.split('\n');
+    Random random = Random();
+
+    answer = words[random.nextInt(words.length)];
+
+    return words;
+  }
+
+  
 
   @override
   void initState() {
@@ -40,11 +54,13 @@ class _WordleWidgetState extends State<WordleWidget> {
   }
 
   void _resetGame() {
+    loadWords();
     _controllers.clear();
     _focusNodes.clear();
     _backgroundColor.clear();
     _currentEditingRowIndex = 0;
     _currentEditingColumnIndex = 0;
+
     
     for (int i = 0; i < 6; i++) {
       List<TextEditingController> rowControllers = [];
@@ -60,6 +76,30 @@ class _WordleWidgetState extends State<WordleWidget> {
     }
     setState(() {});
   }
+
+  void _resetColumn() {
+    
+    // 현재 행의 모든 TextEditingController와 FocusNode를 새롭게 초기화합니다.
+    List<TextEditingController> newRowControllers = [];
+    List<FocusNode> newRowFocusNodes = [];
+    List<Color> newRowBackgroundColors = List.filled(5, Colors.transparent); // 5칸 모두 투명색으로 초기화
+    
+    for (int j = 0; j < 5; j++) { // 5칸에 대해 반복
+      newRowControllers.add(TextEditingController());
+      newRowFocusNodes.add(FocusNode());
+    }
+
+    // 현재 행에 대한 정보를 업데이트합니다.
+    _controllers[_currentEditingRowIndex] = newRowControllers;
+    _focusNodes[_currentEditingRowIndex] = newRowFocusNodes;
+    _backgroundColor[_currentEditingRowIndex] = newRowBackgroundColors;
+
+    // 상태 변경을 알리기 위해 setState를 호출합니다.
+    _currentEditingColumnIndex = 0;
+    setState(() {});
+}
+
+
 
 
   void _checkWord() {
@@ -130,9 +170,38 @@ class _WordleWidgetState extends State<WordleWidget> {
       onKey: (event) {
         if (event is RawKeyDownEvent && event.character != null) {
           final String? character = event.character;
+          String userInput = _controllers[_currentEditingRowIndex].map((controller) => controller.text).join('').toLowerCase();
 
-          if (event.logicalKey == LogicalKeyboardKey.enter) {
-            _checkWord();
+          if (event.logicalKey == LogicalKeyboardKey.enter && userInput.length == 5) { 
+
+            if(!words.contains(userInput)) {
+              if (!_isDialogShowing) {
+                _isDialogShowing = true;
+                showDialog(
+                  barrierDismissible: false,
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: Text("없는 단어"),
+                      actions: <Widget>[
+                        TextButton(
+                          child: Text("확인"),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _isDialogShowing = false;
+                            _resetColumn();
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
+              }else{
+                Navigator.of(context).pop();
+                _isDialogShowing = false;
+                _resetColumn();
+              }
+            }else _checkWord();
           } else if (event.logicalKey == LogicalKeyboardKey.backspace && _currentEditingColumnIndex > 0) {
             setState(() {
               _currentEditingColumnIndex--;
@@ -140,13 +209,17 @@ class _WordleWidgetState extends State<WordleWidget> {
               _backgroundColor[_currentEditingRowIndex][_currentEditingColumnIndex] = Colors.transparent;
             });
           } else if (_currentEditingColumnIndex < 5 && character!.isNotEmpty) {
-            // 새 글자 입력
-            setState(() {
-              _controllers[_currentEditingRowIndex][_currentEditingColumnIndex].text = character;
-              if (_currentEditingColumnIndex < 4) { // 마지막 칸에 문자를 입력한 후 인덱스 증가를 막습니다.
-                _currentEditingColumnIndex++;
-              }
-            });
+            final isEnglishLetter = RegExp(r'^[a-zA-Z]$').hasMatch(character);
+
+            // 입력된 문자가 영어 알파벳인 경우에만 처리
+            if(isEnglishLetter) {
+              setState(() {
+                _controllers[_currentEditingRowIndex][_currentEditingColumnIndex].text = character;
+                if (_currentEditingColumnIndex < 4) { // 마지막 칸에 문자를 입력한 후 인덱스 증가를 막습니다.
+                  _currentEditingColumnIndex++;
+                }
+              });
+            }
           }
         }
       },
