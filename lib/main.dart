@@ -175,15 +175,27 @@ class _WordleWidgetState extends State<WordleWidget> {
 
   void _handleBackspaceKey() {
     if (_currentEditingColumnIndex > 0) {
-      setState(() {
-        _currentEditingColumnIndex--;
-        _clearCurrentColumn();
-      });
+      String currentText = _controllers[_currentEditingRowIndex][_currentEditingColumnIndex].text;
+    
+      if (currentText.isNotEmpty) {
+        setState(() {
+          _clearCurrentColumn();
+        });
+      } 
+        
+      else if (_currentEditingColumnIndex > 0) {
+        setState(() {
+          _currentEditingColumnIndex--;
+          _clearCurrentColumn();
+        });
+      };
     }
   }
 
   void _handleCharacterInput(String character) {
-    if (_currentEditingColumnIndex < 5 && RegExp(r'^[a-zA-Z]$').hasMatch(character)) {
+    final userInput = _getUserInput();
+
+    if (userInput.length != 5 && _currentEditingColumnIndex < 5 && RegExp(r'^[a-zA-Z]$').hasMatch(character)) {
       setState(() {
         _controllers[_currentEditingRowIndex][_currentEditingColumnIndex].text = character;
         if (_currentEditingColumnIndex < 4) _currentEditingColumnIndex++;
