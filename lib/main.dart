@@ -78,23 +78,19 @@ class _WordleWidgetState extends State<WordleWidget> {
   }
 
   void _resetColumn() {
-    
-    // 현재 행의 모든 TextEditingController와 FocusNode를 새롭게 초기화합니다.
     List<TextEditingController> newRowControllers = [];
     List<FocusNode> newRowFocusNodes = [];
     List<Color> newRowBackgroundColors = List.filled(5, Colors.transparent); // 5칸 모두 투명색으로 초기화
     
-    for (int j = 0; j < 5; j++) { // 5칸에 대해 반복
+    for (int j = 0; j < 5; j++) {
       newRowControllers.add(TextEditingController());
       newRowFocusNodes.add(FocusNode());
     }
 
-    // 현재 행에 대한 정보를 업데이트합니다.
     _controllers[_currentEditingRowIndex] = newRowControllers;
     _focusNodes[_currentEditingRowIndex] = newRowFocusNodes;
     _backgroundColor[_currentEditingRowIndex] = newRowBackgroundColors;
 
-    // 상태 변경을 알리기 위해 setState를 호출합니다.
     _currentEditingColumnIndex = 0;
     setState(() {});
 }
@@ -106,18 +102,17 @@ class _WordleWidgetState extends State<WordleWidget> {
     // 사용자가 현재 편집 중인 행의 모든 컨트롤러에서 글자를 가져와 하나의 단어로 합칩니다.
     String userInput = _controllers[_currentEditingRowIndex].map((controller) => controller.text).join('').toLowerCase();
 
-    // 단어 길이가 5일 때만 확인 로직을 수행합니다.
     if (userInput.length == 5) {
       for (int i = 0; i < 5; i++) {
         // 정확한 위치에 있는 경우
         if (userInput[i] == answer[i]) {
-          _backgroundColor[_currentEditingRowIndex][i] = Colors.green; // 정확한 위치
+          _backgroundColor[_currentEditingRowIndex][i] = Colors.green; 
         // 단어에는 있지만 다른 위치에 있는 경우
         } else if (answer.contains(userInput[i])) {
-          _backgroundColor[_currentEditingRowIndex][i] = Colors.yellow; // 다른 위치에 존재
+          _backgroundColor[_currentEditingRowIndex][i] = Colors.yellow; 
         // 존재하지 않는 경우
         } else {
-          _backgroundColor[_currentEditingRowIndex][i] = Colors.grey; // 존재하지 않음
+          _backgroundColor[_currentEditingRowIndex][i] = Colors.grey; 
         }
       }
 
@@ -161,6 +156,74 @@ class _WordleWidgetState extends State<WordleWidget> {
     }
   }
 
+  String _getUserInput() {
+    return _controllers[_currentEditingRowIndex]
+        .map((controller) => controller.text)
+        .join('')
+        .toLowerCase();
+  }
+
+  void _handleEnterKey(String userInput) {
+    if (userInput.length != 5) {
+      _showDialogIfNeeded("너무 짧음");
+    } else if (!words.contains(userInput)) {
+      _showDialogIfNeeded("없는 단어");
+    } else {
+      _checkWord();
+    }
+  }
+
+  void _handleBackspaceKey() {
+    if (_currentEditingColumnIndex > 0) {
+      setState(() {
+        _currentEditingColumnIndex--;
+        _clearCurrentColumn();
+      });
+    }
+  }
+
+  void _handleCharacterInput(String character) {
+    if (_currentEditingColumnIndex < 5 && RegExp(r'^[a-zA-Z]$').hasMatch(character)) {
+      setState(() {
+        _controllers[_currentEditingRowIndex][_currentEditingColumnIndex].text = character;
+        if (_currentEditingColumnIndex < 4) _currentEditingColumnIndex++;
+      });
+    }
+  }
+
+  void _showDialogIfNeeded(String title) {
+    if (!_isDialogShowing) {
+      _isDialogShowing = true;
+      showDialog(
+        barrierDismissible: false,
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(title),
+            actions: <Widget>[
+              TextButton(
+                child: Text("확인"),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _isDialogShowing = false;
+                  _resetColumn();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      Navigator.of(context).pop();
+      _isDialogShowing = false;
+      _resetColumn();
+    }
+  }
+
+  void _clearCurrentColumn() {
+    _controllers[_currentEditingRowIndex][_currentEditingColumnIndex].clear();
+    _backgroundColor[_currentEditingRowIndex][_currentEditingColumnIndex] = Colors.transparent;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -168,87 +231,17 @@ class _WordleWidgetState extends State<WordleWidget> {
       focusNode: FocusNode(),
       autofocus: true,
       onKey: (event) {
-        if (event is RawKeyDownEvent && event.character != null) {
-          final String? character = event.character;
-          String userInput = _controllers[_currentEditingRowIndex].map((controller) => controller.text).join('').toLowerCase();
+        if (event is! RawKeyDownEvent || event.character == null) return;
 
-          if (event.logicalKey == LogicalKeyboardKey.enter) { 
-            if(userInput.length != 5){
-              if (!_isDialogShowing) {
-                _isDialogShowing = true;
-                showDialog(
-                  barrierDismissible: false,
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text("너무 짧음"),
-                      actions: <Widget>[
-                        TextButton(
-                          child: Text("확인"),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            _isDialogShowing = false;
-                            _resetColumn();
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
-              }else{
-                Navigator.of(context).pop();
-                _isDialogShowing = false;
-                _resetColumn();
-              }
-            }else {
-              if(!words.contains(userInput)) {
-                if (!_isDialogShowing) {
-                  _isDialogShowing = true;
-                  showDialog(
-                    barrierDismissible: false,
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text("없는 단어"),
-                        actions: <Widget>[
-                          TextButton(
-                            child: Text("확인"),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              _isDialogShowing = false;
-                              _resetColumn();
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                }else{
-                  Navigator.of(context).pop();
-                  _isDialogShowing = false;
-                  _resetColumn();
-                }
-              }else _checkWord();
-            }
-          } else if (event.logicalKey == LogicalKeyboardKey.backspace && _currentEditingColumnIndex > 0) {
-            setState(() {
-              _currentEditingColumnIndex--;
-              _controllers[_currentEditingRowIndex][_currentEditingColumnIndex].clear();
-              _backgroundColor[_currentEditingRowIndex][_currentEditingColumnIndex] = Colors.transparent;
-            });
-          } else if (_currentEditingColumnIndex < 5 && character!.isNotEmpty) {
-            final isEnglishLetter = RegExp(r'^[a-zA-Z]$').hasMatch(character);
-
-            // 입력된 문자가 영어 알파벳인 경우에만 처리
-            if(isEnglishLetter) {
-              setState(() {
-                _controllers[_currentEditingRowIndex][_currentEditingColumnIndex].text = character;
-                if (_currentEditingColumnIndex < 4) { // 마지막 칸에 문자를 입력한 후 인덱스 증가를 막습니다.
-                  _currentEditingColumnIndex++;
-                }
-              });
-            }
-          }
+        final character = event.character!;
+        final userInput = _getUserInput();
+        
+        if (event.logicalKey == LogicalKeyboardKey.enter) {
+          _handleEnterKey(userInput);
+        } else if (event.logicalKey == LogicalKeyboardKey.backspace) {
+          _handleBackspaceKey();
+        } else {
+          _handleCharacterInput(character);
         }
       },
 
