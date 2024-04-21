@@ -253,7 +253,11 @@ class _WordleWidgetState extends State<WordleWidget> {
         } else if (event.logicalKey == LogicalKeyboardKey.backspace) {
           _handleBackspaceKey();
         } else {
-          _handleCharacterInput(character);
+          if(_isDialogShowing) {
+            Navigator.of(context).pop();
+            _isDialogShowing = false;
+            _resetColumn();
+          }else _handleCharacterInput(character);
         }
       },
 
