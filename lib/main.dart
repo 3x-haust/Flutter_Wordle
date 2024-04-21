@@ -31,6 +31,7 @@ class _WordleWidgetState extends State<WordleWidget> {
   List<List<Color>> _backgroundColor = []; // 배경색 리스트
   int _currentEditingRowIndex = 0; // 현재 편집 중인 행 인덱스
   int _currentEditingColumnIndex = 0; // 현재 편집 중인 열 인덱스
+  bool _isDialogShowing = false; // 다이얼로그 표시 여부
 
   @override
   void initState() {
@@ -81,24 +82,33 @@ class _WordleWidgetState extends State<WordleWidget> {
       }
 
       if (userInput == answer || _currentEditingRowIndex >= 5) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text(userInput == answer ? "성공!" : "실패!"),
-              content: Text("정답은 ${answer.toUpperCase()}입니다. \n다시 시작하시겠습니까?"),
-              actions: <Widget>[
-                TextButton(
-                  child: Text("확인"),
-                  onPressed: () {
-                    Navigator.of(context).pop(); // 팝업 닫기
-                    _resetGame(); // 게임 재시작
-                  },
-                ),
-              ],
-            );
-          },
-        );
+        if (!_isDialogShowing) {
+          _isDialogShowing = true;
+          showDialog(
+            barrierDismissible: false,
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text(userInput == answer ? "성공!" : "실패!"),
+                content: Text("정답은 ${answer.toUpperCase()}입니다. \n다시 시작하시겠습니까?"),
+                actions: <Widget>[
+                  TextButton(
+                    child: Text("확인"),
+                    onPressed: () {
+                      Navigator.of(context).pop(); // 팝업 닫기
+                      _isDialogShowing = false; // 다이얼로그 표시 여부를 false로 설정
+                      _resetGame(); // 게임 재시작
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        }else {
+          Navigator.of(context).pop();
+          _isDialogShowing = false;
+          _resetGame();
+        }
       } else {
         if (_currentEditingRowIndex < 5) {
           _currentEditingRowIndex++;
